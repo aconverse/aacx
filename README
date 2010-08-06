@@ -1,0 +1,9 @@
+AACX or AAC eXaminer is an AAC frame analysis tool inspired by LAME's
+mp3x. The program is still in its very early stages and is not yet
+complete. It requires a PCM decoded copy of the stream and a custom
+format log file. A patch to modify FFmpeg into generating the log file
+is included with the program.
+
+Happy Hacking,
+
+Alex Converse
