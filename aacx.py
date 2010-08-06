@@ -140,6 +140,10 @@ kbd_128  = mk_kbd_window(6, 256)
 sin_1024 = mk_sin_window(2048)
 sin_128  = mk_sin_window(256)
 
+window_group_colors = [
+	'#FFC200', '#FF5B00', '#84002E', '#4AC0F2', '#FFC200', '#FF5B00', '#84002E', '#4AC0F2'
+]
+
 class Frame: 
 	def __init__(self):
 		self.global_gain = 0;
@@ -246,14 +250,19 @@ def aac_show_frame(fig, stuff, n):
 		for i in range(0, max_sfb):
 			sfx = numpy.append(sfx, numpy.repeat(fsf[i], swb_offset_1024[sri][i+1]-swb_offset_1024[sri][i]))
 		sfx = numpy.append(sfx, numpy.zeros(1024-sfx.shape[0], dtype='int32'))
+		color_idx = numpy.zeros(8, dtype='int32')
 	else:
 		groups = len(frame.group_len)
+		color_idx = numpy.empty([0], dtype='int32')
+		g_idx = 0
 		for g in frame.group_len:
 			sf = numpy.empty([0], dtype='int32')
 			for i in range(0, max_sfb):
 				sf = numpy.append(sf, numpy.repeat(fsf[i], swb_offset_128[sri][i+1]-swb_offset_128[sri][i]))
 			sf = numpy.append(sf, numpy.zeros(128-sf.shape[0], dtype='int32'))
 			sfx = numpy.append(sfx, numpy.tile(sf, g))
+			color_idx = numpy.append(color_idx, numpy.tile(g_idx, g))
+			g_idx = g_idx + 1
 
 	b = numpy.arange(0, 1024)
 	t = n*1024 + numpy.arange(0, 2048)
@@ -263,13 +272,17 @@ def aac_show_frame(fig, stuff, n):
 	ax3 = ax2.twinx()
 	ax4 = ax1.twinx()
 	if frame.window_sequence == 2:
+		group_edges = numpy.cumsum(frame.group_len)
 		win_l = kbd_128 if frame.window_shape_prev else sin_128
 		win_r = kbd_128 if frame.window_shape      else sin_128
 		win = numpy.append(win_l, win_r[::-1])
-		ax4.plot(t[0] + 448 + numpy.arange(0, 256), win, 'r')
+		g = 0
+		ax4.plot(t[0] + 448 + numpy.arange(0, 256), win, window_group_colors[g])
 		win = numpy.append(win_r, win_r[::-1])
 		for i in range(1, 8):
-			ax4.plot(t[0] + 448 + i*128 + numpy.arange(0, 256), win, 'r')
+			if i >= group_edges[g]:
+				g = g + 1
+			ax4.plot(t[0] + 448 + i*128 + numpy.arange(0, 256), win, window_group_colors[g])
 	else:
 		if frame.window_sequence == 3:
 			win_l = numpy.zeros(448, dtype='float')
@@ -284,7 +297,7 @@ def aac_show_frame(fig, stuff, n):
 		else:
 			win_r = kbd_1024 if frame.window_shape else sin_1024
 		win = numpy.append(win_l, win_r[::-1])
-		ax4.plot(t, win, 'r')
+		ax4.plot(t, win, window_group_colors[0])
 	ax4.axis([t[0], t[-1]+1, 0, 1.005]) #hack to keep the top from diappearing
 	ax4.yaxis.set_major_locator(matplotlib.ticker.NullLocator())
 	ax4.xaxis.set_major_locator(matplotlib.ticker.LinearLocator(9))
@@ -295,7 +308,13 @@ def aac_show_frame(fig, stuff, n):
 	#ax2.step(t, lcoef)
 	ax2.plot(numpy.arange(0, 1024), lcoef)
 	g = numpy.tile(global_gain, 1024)
-	ax3.step(b, sfx, 'g', b, g, 'r')
+	ax3.step(b, g, 'r')
+	if frame.window_sequence == 2:
+		for i in range(0, 8):
+			x = i*128 + numpy.arange(0, 128)
+			ax3.step(x, sfx[x], window_group_colors[color_idx[i]])
+	else:
+		ax3.step(b, sfx[b], window_group_colors[color_idx[0]])
 	ax3.axis([b[0], b[-1]+1, 0, 255])
 	ax3.xaxis.set_major_locator(matplotlib.ticker.LinearLocator(9))
 	ax3.set_ylabel('global_gain', color='r')
