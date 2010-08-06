@@ -1,0 +1,120 @@
+Index: libavcodec/aacdec.c
+===================================================================
+--- libavcodec/aacdec.c	(revision 24704)
++++ libavcodec/aacdec.c	(working copy)
+@@ -75,6 +75,7 @@
+            Parametric Stereo.
+  */
+ 
++#define DEBUG 1
+ 
+ #include "avcodec.h"
+ #include "internal.h"
+@@ -654,6 +655,10 @@
+     ics->window_sequence[0] = get_bits(gb, 2);
+     ics->use_kb_window[1]   = ics->use_kb_window[0];
+     ics->use_kb_window[0]   = get_bits1(gb);
++    dprintf(ac->avctx, "common_window %d\n", common_window);
++    dprintf(ac->avctx, "window_shape %d\n", ics->use_kb_window[0]);
++    dprintf(ac->avctx, "window_shape_prev %d\n", ics->use_kb_window[1]);
++    dprintf(ac->avctx, "window_sequence %d\n", ics->window_sequence[0]);
+     ics->num_window_groups  = 1;
+     ics->group_len[0]       = 1;
+     if (ics->window_sequence[0] == EIGHT_SHORT_SEQUENCE) {
+@@ -663,10 +668,12 @@
+             if (get_bits1(gb)) {
+                 ics->group_len[ics->num_window_groups - 1]++;
+             } else {
++                dprintf(ac->avctx, "group_len %d: %d\n", i, ics->group_len[ics->num_window_groups-1]);
+                 ics->num_window_groups++;
+                 ics->group_len[ics->num_window_groups - 1] = 1;
+             }
+         }
++        dprintf(ac->avctx, "group_len %d: %d\n", i, ics->group_len[ics->num_window_groups-1]);
+         ics->num_windows       = 8;
+         ics->swb_offset        =    ff_swb_offset_128[ac->m4ac.sampling_index];
+         ics->num_swb           =   ff_aac_num_swb_128[ac->m4ac.sampling_index];
+@@ -776,12 +783,16 @@
+     int offset[3] = { global_gain, global_gain - 90, 100 };
+     int noise_flag = 1;
+     static const char *sf_str[3] = { "Global gain", "Noise gain", "Intensity stereo position" };
++    dprintf(ac->avctx, "scalefactors begin global_gain %3d max_sfb %2d\n",
++            global_gain, ics->max_sfb);
+     for (g = 0; g < ics->num_window_groups; g++) {
+         for (i = 0; i < ics->max_sfb;) {
+             int run_end = band_type_run_end[idx];
+             if (band_type[idx] == ZERO_BT) {
+-                for (; i < run_end; i++, idx++)
++                for (; i < run_end; i++, idx++) {
+                     sf[idx] = 0.;
++                    dprintf(ac->avctx, " sf %3d: %3d\n", idx, 0);
++                }
+             } else if ((band_type[idx] == INTENSITY_BT) || (band_type[idx] == INTENSITY_BT2)) {
+                 for (; i < run_end; i++, idx++) {
+                     offset[2] += get_vlc2(gb, vlc_scalefactors.table, 7, 3) - 60;
+@@ -791,6 +802,7 @@
+                         return -1;
+                     }
+                     sf[idx] = ff_aac_pow2sf_tab[-offset[2] + 300];
++                    dprintf(ac->avctx, " sf %3d: %3d\n", idx, offset[2]);
+                 }
+             } else if (band_type[idx] == NOISE_BT) {
+                 for (; i < run_end; i++, idx++) {
+@@ -804,6 +816,7 @@
+                         return -1;
+                     }
+                     sf[idx] = -ff_aac_pow2sf_tab[offset[1] + sf_offset + 100];
++                    dprintf(ac->avctx, " sf %3d: %3d\n", idx, offset[1]);
+                 }
+             } else {
+                 for (; i < run_end; i++, idx++) {
+@@ -814,10 +827,12 @@
+                         return -1;
+                     }
+                     sf[idx] = -ff_aac_pow2sf_tab[ offset[0] + sf_offset];
++                    dprintf(ac->avctx, " sf %3d: %3d\n", idx, offset[0]);
+                 }
+             }
+         }
+     }
++    dprintf(ac->avctx, "scalefactors end\n");
+     return 0;
+ }
+ 
+@@ -1338,6 +1353,7 @@
+         }
+         if ((tns->present = get_bits1(gb)) && decode_tns(ac, tns, gb, ics))
+             return -1;
++        dprintf(ac->avctx, "tns_present %d\n", tns->present);
+         if (get_bits1(gb)) {
+             av_log_missing_feature(ac->avctx, "SSR", 1);
+             return -1;
+@@ -1723,6 +1739,11 @@
+     float *temp = ac->temp;
+     int i;
+ 
++    for (i = 0; i < 1024; i+=4) {
++        dprintf(ac->avctx, "mdct coef %4d: %e %e %e %e\n",
++                i, in[i], in[i+1], in[i+2], in[i+3]);
++    }  
++
+     // imdct
+     if (ics->window_sequence[0] == EIGHT_SHORT_SEQUENCE) {
+         for (i = 0; i < 1024; i += 128)
+@@ -1963,6 +1984,8 @@
+             return -1;
+         }
+     }
++    dprintf(avctx, "frame %d\n", avctx->frame_number);
++    dprintf(avctx, "sampling_index %d\n", ac->m4ac.sampling_index);
+ 
+     memset(ac->tags_seen_this_frame, 0, sizeof(ac->tags_seen_this_frame));
+     // parse
+@@ -2043,6 +2066,7 @@
+     }
+ 
+     spectral_to_sample(ac);
++    dprintf(avctx, "frame end\n");
+ 
+     multiplier = (ac->m4ac.sbr == 1) ? ac->m4ac.ext_sample_rate > ac->m4ac.sample_rate : 0;
+     samples <<= multiplier;
