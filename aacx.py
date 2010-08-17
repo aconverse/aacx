@@ -123,6 +123,11 @@ window_sequence_name = [
 	"LONG_STOP_SEQUENCE"
 ]
 
+window_shape_name = [
+	"SIN",
+	"KBD",
+]
+
 def mk_kbd_window(alpha, N):
 	n = numpy.arange(0., N/2)
 	n = (n - N/4)/(N/4)
@@ -373,7 +378,9 @@ x.set_num_frames(num_frames)
 fig = pyplot.figure()
 
 def spinback(n, num_frames):
-	text = "frame "+str(n)+"/"+str(num_frames)+" | "+window_sequence_name[stuff[1][n].window_sequence]+" | "+" global gain "+str(stuff[1][n].global_gain)
+	text =  "frame "+str(n)+"/"+str(num_frames)+" | "+window_sequence_name[stuff[1][n].window_sequence]
+	text += " | "+window_shape_name[stuff[1][n].window_shape_prev]+"/"+window_shape_name[stuff[1][n].window_shape_prev]
+	text += " | "+" global gain "+str(stuff[1][n].global_gain)
 	x.set_status_here(text)
 	aac_show_frame(fig, stuff, n)
 	if x.hasplot:
