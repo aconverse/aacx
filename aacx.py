@@ -258,7 +258,7 @@ def aac_show_frame(fig, stuff, n):
 		for g in frame.group_len:
 			sf = numpy.empty([0], dtype='int32')
 			for i in range(0, max_sfb):
-				sf = numpy.append(sf, numpy.repeat(fsf[i], swb_offset_128[sri][i+1]-swb_offset_128[sri][i]))
+				sf = numpy.append(sf, numpy.repeat(fsf[g_idx*max_sfb+i], swb_offset_128[sri][i+1]-swb_offset_128[sri][i]))
 			sf = numpy.append(sf, numpy.zeros(128-sf.shape[0], dtype='int32'))
 			sfx = numpy.append(sfx, numpy.tile(sf, g))
 			color_idx = numpy.append(color_idx, numpy.tile(g_idx, g))
